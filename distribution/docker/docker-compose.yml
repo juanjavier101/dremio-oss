@@ -1,0 +1,103 @@
+#
+# Copyright (C) 2017 Dremio Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+name: dremio-cluster
+
+# Shared build configuration reused by all services.
+x-dremio-common: &dremio-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      DOWNLOAD_URL: ${DOWNLOAD_URL:?Set DOWNLOAD_URL in .env (copy from .env.example)}
+  image: dremio-oss:local
+
+services:
+
+  coordinator:
+    <<: *dremio-common
+    container_name: dremio-coordinator
+    hostname: coordinator
+    ports:
+      - "9047:9047"    # Web UI / REST API
+      - "31010:31010"  # JDBC/ODBC client endpoint
+      - "32010:32010"  # Arrow Flight
+      - "45678:45678"  # Fabric RPC (inter-node)
+    volumes:
+      - ./cluster/coordinator/dremio.conf:/opt/dremio/conf/dremio.conf:ro
+      - coordinator-data:/opt/dremio/data
+      - shared-dist:/opt/dremio/dist
+    networks:
+      - dremio-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9047/apiv2/server_status"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  executor-1:
+    <<: *dremio-common
+    container_name: dremio-executor-1
+    hostname: executor-1
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    volumes:
+      - ./cluster/executor/dremio.conf:/opt/dremio/conf/dremio.conf:ro
+      - executor-1-data:/opt/dremio/data
+      - shared-dist:/opt/dremio/dist
+    networks:
+      - dremio-net
+
+  executor-2:
+    <<: *dremio-common
+    container_name: dremio-executor-2
+    hostname: executor-2
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    volumes:
+      - ./cluster/executor/dremio.conf:/opt/dremio/conf/dremio.conf:ro
+      - executor-2-data:/opt/dremio/data
+      - shared-dist:/opt/dremio/dist
+    networks:
+      - dremio-net
+
+  executor-3:
+    <<: *dremio-common
+    container_name: dremio-executor-3
+    hostname: executor-3
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    volumes:
+      - ./cluster/executor/dremio.conf:/opt/dremio/conf/dremio.conf:ro
+      - executor-3-data:/opt/dremio/data
+      - shared-dist:/opt/dremio/dist
+    networks:
+      - dremio-net
+
+volumes:
+  coordinator-data:
+  executor-1-data:
+  executor-2-data:
+  executor-3-data:
+  shared-dist:
+
+networks:
+  dremio-net:
+    driver: bridge
