@@ -17,12 +17,12 @@
 name: dremio-cluster
 
 # Shared configuration for all Dremio nodes.
-# - image:   pre-built via `docker build --build-arg DOWNLOAD_URL=<url> -t dremio-oss:local .`
+# - image:   set DREMIO_IMAGE in .env (e.g. dremio/dremio-oss or dremio-oss:local)
 # - restart: recover automatically after container crash or VM reboot
 # - logging: json-file with rotation to prevent disk exhaustion
 # - ulimits: Dremio requires at least 65536 open file descriptors
 x-dremio-common: &dremio-common
-  image: dremio-oss:${DREMIO_IMAGE_TAG:-local}
+  image: ${DREMIO_IMAGE:-dremio-oss:local}
   restart: unless-stopped
   logging:
     driver: json-file

@@ -1,0 +1,3 @@
+# Local environment config — copy from .env.example and fill in values.
+# Never commit this file; it may contain credentials or local paths.
+.env
